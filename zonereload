@@ -1,17 +1,17 @@
 #!/bin/bash
 
+# Basic configuration ---------------------------------------------------------
+mail_subject_init="Zone"
+mail_subject_action="Modified"
+mail_account="admin@mydomain.com.ar"
+# -----------------------------------------------------------------------------
+
 # binaries --------------------------------------------------------------------
 RNDC="$(which rndc)"
 SLEEP="$(which sleep)"
 MAIL="$(which mail)"
 SENDMAIL="$(which sendmail)"
 DATE="$(which date)"
-# -----------------------------------------------------------------------------
-
-# Basic configuration ---------------------------------------------------------
-mail_subject_init="Zone"
-mail_subject_action="Modified"
-mail_account="admin@mydomain.com.ar"
 # -----------------------------------------------------------------------------
 
 # Global variables ------------------------------------------------------------
