@@ -1,0 +1,112 @@
+#!/bin/bash
+
+# binaries --------------------------------------------------------------------
+RNDC="$(which rndc)"
+SLEEP="$(which sleep)"
+MAIL="$(which mail)"
+SENDMAIL="$(which sendmail)"
+DATE="$(which date)"
+# -----------------------------------------------------------------------------
+
+# Basic configuration ---------------------------------------------------------
+mail_subject_init="Zone"
+mail_subject_action="Modified"
+mail_account="admin@mydomain.com.ar"
+# -----------------------------------------------------------------------------
+
+# Global variables ------------------------------------------------------------
+ZONE=""
+print_help=false
+email_alerts_enabled=true
+reload_result=false
+# -----------------------------------------------------------------------------
+
+# Functions -------------------------------------------------------------------
+
+# show_help:
+#       Prints a tiny help to stdout.
+function show_help {
+    echo ''
+    echo -e "\e[4mScript '\e[32m$0\e[24m'\e[39m"
+    echo ''
+    echo "          $0 [-h|-s] -z <ZONENAME>"
+    echo ''
+    echo -e "The script reloads a zone that is passed as an argument \
+        , and alerts through email to '\e[33m$mail_account\e[39m'."
+    echo "Remember to update the zone's serial number."
+    echo ''
+    echo -e '\e[4mArguments:\e[24m'
+    echo '        -h --> Shows this help.'
+    echo '        -z <ZONENAME> --> reloads the specified zone.'
+    echo '        -s --> Silent, Does not emits a mail alert'
+    echo ''
+}
+
+
+# alert_modified_zone:
+#       Sends an email alert notifying about the reloaded zone. The mail is
+#       HTML formated. The email would be send only if email_alerts_enabled
+#       is set to TRUE.
+function alert_modified_zone {
+    if [ "$email_alerts_enabled" = true ] ; then
+        local fecha=`$DATE +%Y-%m-%d:%H:%M:%S`
+        local mensaje_header="<!DOCTYPE html><html><head><title></title></head><body><h3>Zona $ZONE modificada</h3>"
+        local mensaje_body="<p><b>Modification Date: $fecha</b></p><p><b>Actualization's result:</b> $reload_result</p>"
+        local mensaje_footer='</body></html>'
+        local mensaje="$mensaje_header $mensaje_body $mensaje_footer"
+        local MAIL_CMD="$SENDMAIL $mail_account"
+        (echo "Subject: $mail_subject_init $ZONE $mail_subject_action";echo -e "MIME-Version: 1.0\nContent-Type: text/html;\n" && echo "$mensaje") | eval $MAIL_CMD
+    fi
+}
+
+
+# update_zone
+#   Updates the zone $ZONE, and notifies it by email.
+function update_zone {
+    reload_result="<p>$(($RNDC "freeze" $ZONE) 2>&1 )</p>"
+    reload_result="$reload_result <p>$(($RNDC "reload" $ZONE) 2>&1 )</p>"
+    reload_result="$reload_result <p>$(($RNDC "thaw" $ZONE) 2>&1 )</p>"
+    alert_modified_zone
+}
+
+
+# Input data revoery ----------------------------------------------------------
+
+# First argument is shell command (as in C)
+ARGV0=$0
+ARGV1=$1
+ARGV2="$2"
+
+# Number of args, not counting $0
+ARGC=$#
+
+# MAIN ------------------------------------------------------------------------
+
+i=1  # Used as argument index
+while [ $i -le $ARGC ]; do
+    # "${!i} "expands" (resolves) to $1, $2,.. by first expanding i, and
+    # using the result (1,2,3..) as a variable which is then expanded.
+
+    if [ "${!i}" == "-h" ]; then
+        print_help=true
+    fi
+
+    if [ "${!i}" == "-s" ]; then
+        email_alerts_enabled=false
+    fi
+
+    if [ "${!i}" == "-z" ]; then
+        i=$((i+1))
+        if [ $i -le $ARGC ]; then
+            ZONE="${!i}"
+        fi
+    fi
+
+    i=$((i+1))
+done
+
+if [ "$print_help" == true ]; then
+    show_help
+else
+    update_zone
+fi
